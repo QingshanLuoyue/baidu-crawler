@@ -5,17 +5,24 @@ var rn = 50; // 单次搜索结果显示条数 record Number 取值范围在10--
 var maxRequestNumber = totalNumber / rn;
 var pageNumber = 0; // 关键字搜索出来结果的序号，该关键词总结果的pagenumber位置的后面10条数据，
 // 如搜出来100条，pageNumber为10，则显示的为11-20条结果列表
-var searchWord = '声网agora';
-
+var searchWord = '即构';
+// var searchWord = 'ZEGO';
+// var searchWord = 'zego';
+// var searchWord = 'Zego';
+var year = 2015;
+var searchStartTime = new Date(year, 0, 1).getTime() / 1000;
+var searchEndTime = new Date(year, 11, 30).getTime() / 1000;
+var rangeCondition = '&gpc=stf=' + searchStartTime + ',' + searchEndTime + '|stftype=2';
 var historyData = getRecordHistory();
 var writedNumber = historyData ? historyData.writedNumber : 0; //写入数据序号
 var compareWord = historyData ? historyData.word : '声网';
 if (compareWord !== searchWord) { // 如果关键词不一样，则重置本地历史存储记录
     setRecordHistory(1, searchWord, 1);
 }
+
 var successRequestNumber = historyData ? historyData.count : 1; // 当前请求成功次数
 
-var initialurl = encodeURI('https://www.baidu.com/s?wd=' + searchWord + '&pn=' + pageNumber + '&rn=' + rn + '&ie=utf-8');
+var initialurl = encodeURI('https://www.baidu.com/s?wd=' + searchWord + '&pn=' + pageNumber + '&rn=' + rn + '&ie=utf-8' + rangeCondition);
 
 var page = require('webpage').create();
 var USER_AGENTS = [
@@ -55,6 +62,10 @@ var USER_AGENTS = [
     "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10"
 ];
 
+var statusTryNumber = 0; // 当前失败次数
+var maxStatusTryNumber = 3; // 最大失败重试次数
+
+
 var reTryNumber = 0; // 当前失败次数
 var maxTryNumber = 3; // 最大失败重试次数
 
@@ -67,7 +78,15 @@ function startSearch(initialurl) {
         //Page is loaded!
         console.log('搜索url = ', initialurl);
         if (status !== 'success') {
-            console.log('获取失败··');
+            statusTryNumber++;
+            if (statusTryNumber > maxStatusTryNumber) {
+                console.log('超过最大status重试次数，拉取下一波数据......');
+                nextSearch();
+            } else {
+                console.log('获取失败··');
+                console.log('status重试第' + statusTryNumber + '次....');
+                startSearch(initialurl);
+            }
         } else {
             window.setTimeout(function() {
                 page.render("searchResult.png"); //截图
@@ -78,11 +97,16 @@ function startSearch(initialurl) {
                         var titleArr = [];
                         var searchRes = $('#wrapper_wrapper #content_left .c-container').each(function() {
                             var title = $(this).find('h3.t a').text().replace(/(\<em\>|\<\/em\>)/g, '');
+                            var originUrl = $(this).find('h3.t a').attr('href');
                             if ($(this).find('.c-row').length !== 0) {
                                 if ($(this).find('.c-row .c-span-last .op-bk-polysemy-move').length !== 0) {
                                     var url = $(this).find('.c-row .c-span-last .op-bk-polysemy-move .c-showurl').text();
                                 } else if ($(this).find('.c-row .c-span-last .f13').length !== 0) {
                                     var url = $(this).find('.c-row .c-span-last .f13 .c-showurl').text();
+                                } else if ($(this).find('.c-row .c-span-last font').length !== 0) {
+                                    var url = $(this).find('.c-row .c-span-last font .g').text();
+                                } else {
+                                    var url = '暂无';
                                 }
                             } else {
                                 var url = $(this).find('.f13 a').eq(0).text();
@@ -91,7 +115,8 @@ function startSearch(initialurl) {
                             titleArr.push({
                                 title: title,
                                 pubDate: pubDate,
-                                url: url
+                                url: url,
+                                originUrl: originUrl
                             });
                         });
                         return titleArr;
@@ -129,26 +154,26 @@ function nextSearch() {
     successRequestNumber++; // 请求次数加1
     if (successRequestNumber > maxRequestNumber) { // 如果大于最大请求数，则不在继续请求
         console.log(totalNumber + '条数据已经请求完毕！！！')
-        console.log('接下来请执行 node transformToxlsx.js写入数据到xlsx');
+        console.log('接下来请执行 node step3_transformToxlsx.js写入数据到xlsx');
         phantom.exit();
         return;
     }
     // 设置记录历史请求记录
-    setRecordHistory(successRequestNumber, searchWord);
+    setRecordHistory(successRequestNumber, searchWord, writedNumber);
     reTryNumber = 0; // 重试次数重置为0
     pageNumber += rn; // 搜索数增加
-    initialurl = encodeURI('https://www.baidu.com/s?wd=' + searchWord + '&pn=' + pageNumber + '&rn=' + rn + '&ie=utf-8');
+    initialurl = encodeURI('https://www.baidu.com/s?wd=' + searchWord + '&pn=' + pageNumber + '&rn=' + rn + '&ie=utf-8' + rangeCondition);
     startSearch(initialurl);
 }
 
 // 暂存获取到的百度搜索结果数据
-var filePath = './data/baiduData.txt';
+var filePath = './data/baidu.txt';
 
 function writeToTxt(dataArr) {
     var str = '';
     for (var i = 0; i < dataArr.length; i++) {
         writedNumber++;
-        str += writedNumber + '[,]' + dataArr[i].title + '[,]' + dataArr[i].pubDate + '[,]' + dataArr[i].url.match(/(https:\/\/|http:\/\/|)(\w|\.)+(\/|)/) + '\n';
+        str += writedNumber + '[,]' + dataArr[i].title + '[,]' + dataArr[i].pubDate + '[,]' + dataArr[i].url.match(/(https:\/\/|http:\/\/|)(\w|\.)+(\/|)/) + '[,]' + dataArr[i].originUrl + '\n';
     }
     console.log('写入' + successRequestNumber + '次数据！')
     fs.write(filePath, str, 'a');
