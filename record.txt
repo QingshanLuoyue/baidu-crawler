@@ -1,1 +1,1 @@
-{"count":10,"word":"Zego","writedNumber":450}
+{"count":10,"word":"(zego | Zego | ZEGO | 即构)","writedNumber":450}
