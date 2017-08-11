@@ -1,16 +1,9 @@
 {
     "version": "0.2.0",
-    "configurations": [
-
-        {
-            "name": "Launch",
-            "type": "phantomjs",
-            "request": "launch",
-            "file": "${workspaceRoot}/baidusearch.js",
-            "webRoot": "${workspaceRoot}",
-            "runtimeExecutable": "${workspaceRoot}/phantomjs",
-            "runtimeArgs": [],
-            "sourceMaps": true
-        }
-    ]
+    "configurations": [{
+        "type": "node",
+        "request": "launch",
+        "name": "Launch Program",
+        "program": "${file}"
+    }]
 }

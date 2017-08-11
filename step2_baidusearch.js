@@ -3,18 +3,18 @@ var fs = require('fs');
 var totalNumber = 500; // 总共想获取的数据条数
 var rn = 50; // 单次搜索结果显示条数 record Number 取值范围在10--50之间，百度默认缺省为10；
 var maxRequestNumber = totalNumber / rn;
-var pageNumber = 0; // 关键字搜索出来结果的序号，该关键词总结果的pagenumber位置的后面10条数据，
-// 如搜出来100条，pageNumber为10，则显示的为11-20条结果列表
-var searchWord = '即构';
+// var searchWord = '即构';
 // var searchWord = 'ZEGO';
 // var searchWord = 'zego';
-// var searchWord = 'Zego';
-var year = 2015;
+var searchWord = 'Zego';
+var year = 2017;
 var searchStartTime = new Date(year, 0, 1).getTime() / 1000;
 var searchEndTime = new Date(year, 11, 30).getTime() / 1000;
 var rangeCondition = '&gpc=stf=' + searchStartTime + ',' + searchEndTime + '|stftype=2';
 var historyData = getRecordHistory();
 var writedNumber = historyData ? historyData.writedNumber : 0; //写入数据序号
+var pageNumber = historyData ? historyData.writedNumber : 0; // 关键字搜索出来结果的序号，该关键词总结果的pagenumber位置的后面10条数据，
+// 如搜出来100条，pageNumber为10，则显示的为11-20条结果列表
 var compareWord = historyData ? historyData.word : '声网';
 if (compareWord !== searchWord) { // 如果关键词不一样，则重置本地历史存储记录
     setRecordHistory(1, searchWord, 1);
@@ -62,6 +62,8 @@ var USER_AGENTS = [
     "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10"
 ];
 
+var tmpContent = ''
+
 var statusTryNumber = 0; // 当前失败次数
 var maxStatusTryNumber = 3; // 最大失败重试次数
 
@@ -78,15 +80,17 @@ function startSearch(initialurl) {
         //Page is loaded!
         console.log('搜索url = ', initialurl);
         if (status !== 'success') {
-            statusTryNumber++;
-            if (statusTryNumber > maxStatusTryNumber) {
-                console.log('超过最大status重试次数，拉取下一波数据......');
-                nextSearch();
-            } else {
-                console.log('获取失败··');
-                console.log('status重试第' + statusTryNumber + '次....');
-                startSearch(initialurl);
-            }
+            window.setTimeout(function() {
+                statusTryNumber++;
+                if (statusTryNumber > maxStatusTryNumber) {
+                    console.log('超过最大status重试次数，拉取下一波数据......');
+                    nextSearch();
+                } else {
+                    console.log('获取失败··');
+                    console.log('status重试第' + statusTryNumber + '次....');
+                    startSearch(initialurl);
+                }
+            }, 1500);
         } else {
             window.setTimeout(function() {
                 page.render("searchResult.png"); //截图
@@ -123,8 +127,14 @@ function startSearch(initialurl) {
                     })
                     console.log('content = ', JSON.stringify(content));
                     if (content.length !== 0) { // 获取成功，请求到数据
+                        if (tmpContent === JSON.stringify(content)) {
+                            console.log('本次拉取到的数据与上一次相同。。。判断后续数据一样，不在继续拉取数据！！！');
+                            phantom.exit();
+                            return;
+                        }
                         // 追加方式'a'  写入数据
                         writeToTxt(content);
+                        tmpContent = JSON.stringify(content);
                         // 进行下一次搜索
                         nextSearch();
                     } else { // 获取失败，重试
@@ -175,7 +185,7 @@ function writeToTxt(dataArr) {
         writedNumber++;
         str += writedNumber + '[,]' + dataArr[i].title + '[,]' + dataArr[i].pubDate + '[,]' + dataArr[i].url.match(/(https:\/\/|http:\/\/|)(\w|\.)+(\/|)/) + '[,]' + dataArr[i].originUrl + '\n';
     }
-    console.log('写入' + successRequestNumber + '次数据！')
+    console.log('写入' + successRequestNumber + '次' + writedNumber + '条数据！')
     fs.write(filePath, str, 'a');
 }
 

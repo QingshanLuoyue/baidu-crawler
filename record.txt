@@ -1,1 +1,1 @@
-{"count":25,"word":"即构","writedNumber":480}
+{"count":10,"word":"Zego","writedNumber":450}
